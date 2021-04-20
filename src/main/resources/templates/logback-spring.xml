@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- scan:	当此属性设置为true时，配置文件如果发生改变，将会被重新加载，默认值为true。
+	scanPeriod:	设置监测配置文件是否有修改的时间间隔，如果没有给出时间单位，默认单位是毫秒。当scan为true时，此属性生效。默认的时间间隔为1分钟。
+	debug:	当此属性设置为true时，将打印出logback内部日志信息，实时查看logback运行状态。默认值为false。 -->
+<configuration scan="true" scanPeriod="40 seconds">
+	
+	<!-- 通过<property>定义的值会被插入到logger上下文中。定义变量后，可以使“${}”来使用变量 -->
+	<property name="myAppName" value="subject-practice" />
+	<property name="log.path" value="/data/logs/${myAppName}"/>
+	
+	<!-- 每个logger都关联到logger上下文，默认上下文名称为“default”。
+		但可以使用<contextName>设置成其他名字，用于区分不同应用程序的记录。一旦设置，不能修改。 -->
+	<contextName>${myAppName}</contextName>
+	
+	<!-- 
+		两个属性 key:标识此<timestamp> 的名字；datePattern：设置将当前时间（解析配置文件的时间）转换为字符串的模式，遵循java.txt.SimpleDateFormat的格式。
+		例如将解析配置文件的时间作为上下文名称： -->
+    <timestamp key="bySecond" datePattern="yyyyMMdd'T'HHmmss"/>   
+	
+	<!-- %m输出的信息,%p日志级别,%t线程名,%d日期,%c类的全名,%i索引【从数字0开始递增】,,, -->    
+    <!-- appender是configuration的子节点，是负责写日志的组件。 -->
+   
+	 <!-- ConsoleAppender：把日志输出到控制台 -->
+	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}:%L - %msg%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+	
+	<!-- RollingFileAppender：滚动记录文件，先将日志记录到指定文件，当符合某个条件时，将日志记录到其他文件 -->
+	<appender name = "dailyFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<encoder>
+			<!-- 打印格式 及编码-->
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}:%L - %msg%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <!-- 文件生成策略 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        	<!-- 如果有日志打印的话，一分钟生成一个日志 ${log.path}/logback-%d{yyyy-MM-dd-HH-mm}.%i.log-->
+        	<!-- 如果有日志打印的话，一天生成一个日志 ${log.path}/logback-%d{yyyy-MM-dd}.%i.log-->
+            <fileNamePattern>${log.path}/logback-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>		<!-- 日志文件大于100M时，重新生成日志文件 -->
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>15</maxHistory>		<!-- 每产生一个日志文件，该日志文件的保存期限为30天 -->
+        </rollingPolicy>
+	</appender>
+	
+	<!-- 指定项目中某个包，当有日志操作行为时的日志记录级别 -->
+	<!-- 级别依次为【从高到低】：FATAL > ERROR > WARN > INFO > DEBUG > TRACE  -->
+	<logger name="com.chenhan.controller" level="DEBUG" additivity="false">    
+        <appender-ref ref="dailyFile" />    
+    </logger> 
+    
+    <!-- additivity:是否向上级logger传递打印信息。默认是true。
+    	logger如果不指定日志级别则继承root的，logger有打印需求会根据addtivity的值决定是否向上级logger（name的包关系决定）或者root传递打印信息
+    	如果logger和上级同时指定了同一个apperder，那么有可能会打印两次日志 -->
+	<logger name="com.chenhan.filter" level="DEBUG" additivity="true">    
+		<appender-ref ref="CONSOLE" />
+        <appender-ref ref="dailyFile" />    
+    </logger> 
+    
+    <logger name = "com" />
+	
+	<!-- springboot Profile配置选择 -->
+	<springProfile name="prod">
+		<logger name="com.chenhan.filter" level="info" additivity="false">    
+			<appender-ref ref="CONSOLE" />
+	        <appender-ref ref="dailyFile" />    
+   		</logger> 
+	</springProfile>
+	
+	<springProfile name="dev">
+		<logger name="com.chenhan.controller" level="debug" additivity="false">    
+			<appender-ref ref="CONSOLE" />
+   		</logger> 
+	</springProfile>
+	
+	<root level="info">    
+        <appender-ref ref="CONSOLE" />    
+        <appender-ref ref="dailyFile" /> 
+    </root>
+
+</configuration>
